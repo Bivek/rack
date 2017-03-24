@@ -55,6 +55,7 @@ module Rack
       def initialize(body, mtime)
         @body = body
         @mtime = mtime
+        @closed = false
       end
 
       def each(&block)
@@ -66,13 +67,18 @@ module Rack
           gzip.flush
         }
       ensure
-        @body.close if @body.respond_to?(:close)
         gzip.close
         @writer = nil
       end
 
       def write(data)
         @writer.call(data)
+      end
+
+      def close
+        return if @closed
+        @closed = true
+        @body.close if @body.respond_to?(:close)
       end
     end
 
@@ -87,6 +93,7 @@ module Rack
 
       def initialize(body)
         @body = body
+        @closed = false
       end
 
       def each
@@ -95,8 +102,13 @@ module Rack
         yield deflater.finish
         nil
       ensure
-        @body.close if @body.respond_to?(:close)
         deflater.close
+      end
+
+      def close
+        return if @closed
+        @closed = true
+        @body.close if @body.respond_to?(:close)
       end
     end
   end
